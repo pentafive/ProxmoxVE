@@ -6,16 +6,13 @@ source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxV
 # Source: https://github.com/clawdbot/clawdbot
 
 APP="Clawdbot"
-var_tags="${var_tags:-ai;automation;assistant;llm;chatbot}"
+var_tags="${var_tags:-ai;assistant}"
 var_cpu="${var_cpu:-4}"
 var_ram="${var_ram:-4096}"
 var_disk="${var_disk:-16}"
 var_os="${var_os:-debian}"
 var_version="${var_version:-12}"
 var_unprivileged="${var_unprivileged:-1}"
-
-# Enable nesting for Cockpit and fuse for SSHFS
-var_features="${var_features:-nesting=1,fuse=1}"
 
 header_info "$APP"
 variables
@@ -26,6 +23,7 @@ function update_script() {
   header_info
   check_container_storage
   check_container_resources
+
   if [[ ! -f /etc/systemd/system/clawdbot.service ]]; then
     msg_error "No ${APP} Installation Found!"
     exit
@@ -35,12 +33,23 @@ function update_script() {
   CURRENT=$(clawdbot --version 2>/dev/null | head -1 | grep -oP '[\d.]+' || echo "0.0.0")
 
   if [[ "${RELEASE}" != "${CURRENT}" ]]; then
+    msg_info "Stopping ${APP}"
+    systemctl stop clawdbot
+    msg_ok "Stopped ${APP}"
+
     msg_info "Updating ${APP} to v${RELEASE}"
     $STD npm update -g clawdbot
-    # Also update Gemini CLI
+    msg_ok "Updated ${APP}"
+
+    msg_info "Updating Gemini CLI"
     $STD npm update -g @google/gemini-cli
-    systemctl restart clawdbot
-    msg_ok "Updated ${APP} to v${RELEASE}"
+    msg_ok "Updated Gemini CLI"
+
+    msg_info "Starting ${APP}"
+    systemctl start clawdbot
+    msg_ok "Started ${APP}"
+
+    msg_ok "Updated successfully to v${RELEASE}"
   else
     msg_ok "No update required. ${APP} is already at v${CURRENT}"
   fi
@@ -53,19 +62,12 @@ description
 
 msg_ok "Completed successfully!\n"
 echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
-echo -e "${INFO}${YW} Access the web interface at:${CL}"
+echo -e "${INFO}${YW} Access it using the following URL:${CL}"
 echo -e "${TAB}${GATEWAY}${BGN}http://${IP}:3003${CL}"
 echo ""
 echo -e "${INFO}${YW} Post-install:${CL}"
-echo -e "${TAB}1. Edit config: ${BGN}/opt/clawdbot/config.yaml${CL}"
-echo -e "${TAB}2. Add your Anthropic/OpenAI API key"
-echo -e "${TAB}3. Run: ${BGN}clawdbot configure${CL} for interactive setup"
-echo -e "${TAB}4. Authenticate Gemini: ${BGN}gemini${CL}"
-echo ""
-echo -e "${INFO}${YW} Included tools:${CL}"
-echo -e "${TAB}• Clawdbot (AI gateway)"
-echo -e "${TAB}• Gemini CLI (Google AI)"
-echo -e "${TAB}• Matrix support (E2EE ready)"
-echo -e "${TAB}• fastfetch (system info)"
+echo -e "${TAB}• Edit config: ${BGN}/opt/clawdbot/config.yaml${CL}"
+echo -e "${TAB}• Or run: ${BGN}clawdbot configure${CL}"
+echo -e "${TAB}• Authenticate Gemini: ${BGN}gemini${CL}"
 echo ""
 echo -e "${INFO}${YW} Documentation: ${BGN}https://docs.clawd.bot${CL}"

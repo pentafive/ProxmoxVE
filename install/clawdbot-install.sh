@@ -5,6 +5,7 @@
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
 # Source: https://github.com/clawdbot/clawdbot
 
+# Import Functions and Setup
 source /dev/stdin <<<"$FUNCTIONS_FILE_PATH"
 color
 verb_ip6
@@ -15,9 +16,6 @@ update_os
 
 msg_info "Installing Dependencies"
 $STD apt install -y \
-  ca-certificates \
-  curl \
-  gnupg \
   build-essential \
   git \
   sshfs
@@ -30,6 +28,7 @@ sed -i 's/^\(session.*pam_systemd.so\)/#\1/' /etc/pam.d/common-session
 sed -i 's/#user_allow_other/user_allow_other/' /etc/fuse.conf
 msg_ok "Configured LXC Optimizations"
 
+# Use helper function for Node.js
 NODE_VERSION="22" setup_nodejs
 
 msg_info "Installing Clawdbot"
@@ -37,8 +36,6 @@ $STD npm install -g clawdbot
 msg_ok "Installed Clawdbot"
 
 msg_info "Installing Matrix Dependencies"
-$STD npm install -g matrix-bot-sdk --prefix /usr/lib/node_modules/clawdbot
-# Also install in clawdbot's node_modules for the plugin
 cd /usr/lib/node_modules/clawdbot && $STD npm install matrix-bot-sdk
 msg_ok "Installed Matrix Dependencies"
 
@@ -50,20 +47,20 @@ msg_info "Installing fastfetch"
 curl -fsSL https://github.com/fastfetch-cli/fastfetch/releases/latest/download/fastfetch-linux-amd64.deb -o /tmp/fastfetch.deb
 $STD dpkg -i /tmp/fastfetch.deb
 rm -f /tmp/fastfetch.deb
+echo 'fastfetch' >> /root/.bashrc
 msg_ok "Installed fastfetch"
 
+get_lxc_ip
+
 msg_info "Creating Configuration"
-mkdir -p /opt/clawdbot
+mkdir -p /opt/clawdbot/workspace
 cat <<EOF >/opt/clawdbot/config.yaml
 # Clawdbot Configuration
 # Documentation: https://docs.clawd.bot
 
 # LLM Provider Configuration
-# Uncomment and configure your preferred provider(s)
-
 # anthropic:
 #   apiKey: "your-anthropic-api-key"
-
 # openai:
 #   apiKey: "your-openai-api-key"
 
@@ -76,7 +73,7 @@ gateway:
 webchat:
   enabled: true
 
-# Workspace directory for agent files
+# Workspace
 workspace: /opt/clawdbot/workspace
 
 # Logging
@@ -92,8 +89,6 @@ logging:
 #     accessToken: "your-access-token"
 #     encryption: true
 EOF
-
-mkdir -p /opt/clawdbot/workspace
 msg_ok "Created Configuration"
 
 msg_info "Creating Service"
@@ -118,11 +113,4 @@ msg_ok "Created Service"
 
 motd_ssh
 customize
-
-# Add fastfetch to root's bashrc
-echo 'fastfetch' >> /root/.bashrc
-
-msg_info "Cleaning up"
-$STD apt-get -y autoremove
-$STD apt-get -y autoclean
-msg_ok "Cleaned"
+cleanup_lxc
