@@ -6,13 +6,16 @@ source <(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxV
 # Source: https://github.com/clawdbot/clawdbot
 
 APP="Clawdbot"
-var_tags="${var_tags:-ai;automation;assistant}"
-var_cpu="${var_cpu:-2}"
-var_ram="${var_ram:-2048}"
-var_disk="${var_disk:-8}"
+var_tags="${var_tags:-ai;automation;assistant;llm;chatbot}"
+var_cpu="${var_cpu:-4}"
+var_ram="${var_ram:-4096}"
+var_disk="${var_disk:-16}"
 var_os="${var_os:-debian}"
-var_version="${var_version:-13}"
+var_version="${var_version:-12}"
 var_unprivileged="${var_unprivileged:-1}"
+
+# Enable nesting for Cockpit and fuse for SSHFS
+var_features="${var_features:-nesting=1,fuse=1}"
 
 header_info "$APP"
 variables
@@ -34,6 +37,8 @@ function update_script() {
   if [[ "${RELEASE}" != "${CURRENT}" ]]; then
     msg_info "Updating ${APP} to v${RELEASE}"
     $STD npm update -g clawdbot
+    # Also update Gemini CLI
+    $STD npm update -g @google/gemini-cli
     systemctl restart clawdbot
     msg_ok "Updated ${APP} to v${RELEASE}"
   else
@@ -50,6 +55,17 @@ msg_ok "Completed successfully!\n"
 echo -e "${CREATING}${GN}${APP} setup has been successfully initialized!${CL}"
 echo -e "${INFO}${YW} Access the web interface at:${CL}"
 echo -e "${TAB}${GATEWAY}${BGN}http://${IP}:3003${CL}"
-echo -e "${INFO}${YW} Configuration file:${CL}"
-echo -e "${TAB}${GATEWAY}${BGN}/opt/clawdbot/config.yaml${CL}"
-echo -e "${INFO}${YW} To configure, edit the config and add your API keys.${CL}"
+echo ""
+echo -e "${INFO}${YW} Post-install:${CL}"
+echo -e "${TAB}1. Edit config: ${BGN}/opt/clawdbot/config.yaml${CL}"
+echo -e "${TAB}2. Add your Anthropic/OpenAI API key"
+echo -e "${TAB}3. Run: ${BGN}clawdbot configure${CL} for interactive setup"
+echo -e "${TAB}4. Authenticate Gemini: ${BGN}gemini${CL}"
+echo ""
+echo -e "${INFO}${YW} Included tools:${CL}"
+echo -e "${TAB}• Clawdbot (AI gateway)"
+echo -e "${TAB}• Gemini CLI (Google AI)"
+echo -e "${TAB}• Matrix support (E2EE ready)"
+echo -e "${TAB}• fastfetch (system info)"
+echo ""
+echo -e "${INFO}${YW} Documentation: ${BGN}https://docs.clawd.bot${CL}"

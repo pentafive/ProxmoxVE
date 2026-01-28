@@ -19,14 +19,38 @@ $STD apt install -y \
   curl \
   gnupg \
   build-essential \
-  git
+  git \
+  sshfs
 msg_ok "Installed Dependencies"
+
+msg_info "Configuring LXC Optimizations"
+# Fix slow SSH login (pam_systemd times out in LXC)
+sed -i 's/^\(session.*pam_systemd.so\)/#\1/' /etc/pam.d/common-session
+# Enable user_allow_other for SSHFS mounts
+sed -i 's/#user_allow_other/user_allow_other/' /etc/fuse.conf
+msg_ok "Configured LXC Optimizations"
 
 NODE_VERSION="22" setup_nodejs
 
 msg_info "Installing Clawdbot"
 $STD npm install -g clawdbot
 msg_ok "Installed Clawdbot"
+
+msg_info "Installing Matrix Dependencies"
+$STD npm install -g matrix-bot-sdk --prefix /usr/lib/node_modules/clawdbot
+# Also install in clawdbot's node_modules for the plugin
+cd /usr/lib/node_modules/clawdbot && $STD npm install matrix-bot-sdk
+msg_ok "Installed Matrix Dependencies"
+
+msg_info "Installing Gemini CLI"
+$STD npm install -g @google/gemini-cli
+msg_ok "Installed Gemini CLI"
+
+msg_info "Installing fastfetch"
+curl -fsSL https://github.com/fastfetch-cli/fastfetch/releases/latest/download/fastfetch-linux-amd64.deb -o /tmp/fastfetch.deb
+$STD dpkg -i /tmp/fastfetch.deb
+rm -f /tmp/fastfetch.deb
+msg_ok "Installed fastfetch"
 
 msg_info "Creating Configuration"
 mkdir -p /opt/clawdbot
@@ -58,6 +82,15 @@ workspace: /opt/clawdbot/workspace
 # Logging
 logging:
   level: info
+
+# Channels (configure as needed)
+# channels:
+#   matrix:
+#     enabled: true
+#     homeserver: "https://matrix.example.org"
+#     userId: "@bot:example.org"
+#     accessToken: "your-access-token"
+#     encryption: true
 EOF
 
 mkdir -p /opt/clawdbot/workspace
@@ -85,4 +118,11 @@ msg_ok "Created Service"
 
 motd_ssh
 customize
-cleanup_lxc
+
+# Add fastfetch to root's bashrc
+echo 'fastfetch' >> /root/.bashrc
+
+msg_info "Cleaning up"
+$STD apt-get -y autoremove
+$STD apt-get -y autoclean
+msg_ok "Cleaned"
